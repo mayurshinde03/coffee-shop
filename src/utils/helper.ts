@@ -3,13 +3,12 @@ export function classNames(...classes: (string | undefined)[]) {
 }
 
 function formatPrice(price: number): string {
-  return price.toLocaleString('en-US', {
+  return price.toLocaleString('en-IN', {
     style: 'currency',
-    currency: 'MMK',
+    currency: 'INR',
     // minimumFractionDigits: 2,
   });
 }
-
 export const priceWithSign = (price: number) => `${formatPrice(price)}`;
 
 export function getSumFromArr(numberArr: number[]): number {
