@@ -22,7 +22,7 @@ A modern, responsive coffee shop e-commerce website built with React and TypeScr
 
 ## 📦 Installation
 ```bash
-git clone https://github.com/dev-zha/coffee-shop.git
+git clone https://github.com/mayurshinde03/coffee-shop.git
 cd coffee-shop
 yarn install
 yarn dev
