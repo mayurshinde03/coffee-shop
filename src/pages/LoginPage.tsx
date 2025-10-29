@@ -11,30 +11,68 @@ export default function LoginPage() {
   const { login: loginToApp } = useAuth();
   const [isLoading, setLoading] = useState(false);
   const [fbBtnClick, setFbBtnClick] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleGLoginSuccess = async (tokenResponse: TokenResponse) => {
     setLoading(true);
+    setError(null);
     const { access_token } = tokenResponse;
 
-    const res = await getUserFromGoogleOAuthAPI(access_token);
+    try {
+      // Get user info from Google
+      const res = await getUserFromGoogleOAuthAPI(access_token);
 
-    setLoading(false);
-    if (res?.email) {
-      console.log(res);
-      const loggedInUser: AuthUser = {
-        id: res.id,
-        name: res.name,
-        email: res.email,
-        image: res.picture,
-      };
-      loginToApp(loggedInUser, '/');
-    } else {
-      console.log('Error');
+      if (res?.email) {
+        // Save user to MongoDB via backend
+        const backendResponse = await fetch('http://localhost:5000/api/auth/google', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            googleId: res.id,
+            email: res.email,
+            name: res.name,
+            givenName: res.given_name,
+            familyName: res.family_name,
+            picture: res.picture,
+            locale: res.locale,
+            emailVerified: res.verified_email
+          }),
+        });
+
+        const data = await backendResponse.json();
+
+        if (data.success) {
+          console.log('✅ User saved to MongoDB:', data.user);
+          
+          const loggedInUser: AuthUser = {
+            id: data.user.id,
+            name: data.user.name,
+            email: data.user.email,
+            image: data.user.picture,
+          };
+          
+          loginToApp(loggedInUser, '/');
+        } else {
+          console.error('❌ Backend error:', data.message);
+          setError('Failed to save user data. Please try again.');
+        }
+      } else {
+        console.error('❌ No email received from Google');
+        setError('Failed to get user information from Google.');
+      }
+    } catch (error) {
+      console.error('❌ Login error:', error);
+      setError('An error occurred during login. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleGLoginFail = (err: any) => {
     console.log('Google Login Fail:', err);
+    setError('Google login failed. Please try again.');
   };
 
   const handleGoogleLogin = useGoogleLogin({
@@ -68,11 +106,19 @@ export default function LoginPage() {
           <p className="text-gray-500 font-medium mt-2">
             Sign in to continue your coffee journey
           </p>
+          
+          {error && (
+            <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
+              {error}
+            </div>
+          )}
+          
           <div className="space-y-4 mt-12">
             <button
               onClick={() => handleGoogleLogin()}
               type="button"
-              className="inline-flex items-center justify-center gap-2 w-full bg-white text-gray-800 text-sm font-medium border rounded-lg px-5 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-100"
+              disabled={isLoading}
+              className="inline-flex items-center justify-center gap-2 w-full bg-white text-gray-800 text-sm font-medium border rounded-lg px-5 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-100 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg
                 className="w-5 h-5"
@@ -97,13 +143,14 @@ export default function LoginPage() {
                   fill="#EB4335"
                 />
               </svg>
-              Sign in with Google
+              {isLoading ? 'Signing in...' : 'Sign in with Google'}
             </button>
             <hr />
             <button
               type="button"
               onClick={handleFaceBookLoginClick}
-              className="inline-flex items-center justify-center gap-2 w-full bg-[#3b5998] hover:bg-[#3b5998]/90 text-white text-sm font-medium border rounded-lg px-5 py-2.5 focus:outline-none focus:ring-2 focus:[#3b5998]/50"
+              disabled={isLoading}
+              className="inline-flex items-center justify-center gap-2 w-full bg-[#3b5998] hover:bg-[#3b5998]/90 text-white text-sm font-medium border rounded-lg px-5 py-2.5 focus:outline-none focus:ring-2 focus:[#3b5998]/50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg
                 className="w-5 h-5"
